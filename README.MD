@@ -194,8 +194,8 @@ kubectl expose deploy nginx-app --type=LoadBalancer --port=80
 On master node
 
 ```bash
-wget https://raw.githubusercontent.com/agambewe/mysql-wp-demo/main/kube/mysql.yaml -O mysql.yaml
-wget https://raw.githubusercontent.com/agambewe/mysql-wp-demo/main/kube/wp.yaml -O wp.yaml
+wget https://raw.githubusercontent.com/agambewe/mysql-wp-demo/main/mysql-deployment.yaml -O mysql.yaml
+wget https://raw.githubusercontent.com/agambewe/mysql-wp-demo/main/wp-deployment.yaml -O wp.yaml
 
 kubectl create namespace demo
 kubectl apply -f mysql.yaml
@@ -369,9 +369,6 @@ kubectl config view --ra
 ### Create nodejsapp on gitlab
 
 - Login to gitlab > new project > import > our app url
-
-```bash
-```
 
 ### Config jenkins pipeline
 

@@ -4,10 +4,10 @@ metadata:
   name: mysql-secret
   namespace: demo
 data:
-  rootPassword: cm9vdAo= # root
-  password: YWRtaW4K # admin
+  rootPassword: cm9vdA== # root
+  password: YWRtaW4= # admin
 type: Opaque
-immutable: true
+---
 
 apiVersion: v1
 kind: ConfigMap
@@ -18,7 +18,8 @@ metadata:
     app: mysql
 data:
   username: wp-user
-  database: wp-database
+  database: wp-db
+---
 
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -32,6 +33,7 @@ spec:
   volumeMode: Filesystem
   accessModes:
   - ReadWriteMany
+---
 
 apiVersion: apps/v1
 kind: Deployment
@@ -50,7 +52,7 @@ spec:
         name: mysql
     spec:
       containers:
-      - image: mysql:8.0-debian
+      - image: mysql:5.6
         name: mysql
         resources:
           requests:
@@ -67,44 +69,39 @@ spec:
             configMapKeyRef:
               name: mysql-config
               key: username
-        - name: MYSQL_ROOT_PASSWORD_FILE
-          value: /etc/secrets/rootCredential
-        - name: MYSQL_PASSWORD_FILE
-          value: /etc/secrets/userCredential
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: rootPassword
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: password
         ports: 
         - containerPort: 3306
           name: mysql
         volumeMounts:
-        - mountPath: /var/lib/mysql
+        - mountPath: /srv/nfs/mydata
           name: mysql-pvc
-        - mountPath: /etc/secrets
-          name: db-credential
       volumes:
       - name: mysql-pvc
         persistentVolumeClaim:
           claimName: mysql-pvc
-      - name: db-credential
-        secret: 
-          secretName: mysql-secret
-          defaultMode: 0440
-          items:
-          - key: rootPassword
-            path: rootCredential
-          - key: password
-            path: userCredential
       restartPolicy: Always
 ---
 
-- kind: Service
-  apiVersion: v1
-  metadata:
-    namespace: demo
-    name: mysql-svc
-  spec:
-    selector:
-      name: mysql
-    type: ClusterIP
-    ports:
-    - name: mysql
-      port: 3306
-      targetPort: 3306
+kind: Service
+apiVersion: v1
+metadata:
+  namespace: demo
+  name: mysql-svc
+spec:
+  selector:
+    name: mysql
+  type: ClusterIP
+  ports:
+  - name: mysql
+    port: 3306
+    targetPort: 3306

@@ -1,0 +1,110 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+  namespace: demo
+data:
+  rootPassword: cm9vdAo= # root
+  password: YWRtaW4K # admin
+type: Opaque
+immutable: true
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-config
+  namespace: demo
+  labels:
+    app: mysql
+data:
+  username: wp-user
+  database: wp-database
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: demo
+spec:
+  resources:
+    requests:
+      storage: 2Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteMany
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  labels:
+    name: mysql
+  namespace: demo
+spec:
+  selector:
+    matchLabels:
+      name: mysql
+  template:
+    metadata:
+      labels:
+        name: mysql
+    spec:
+      containers:
+      - image: mysql:8.0-debian
+        name: mysql
+        resources:
+          requests:
+            cpu: "20m"
+            memory: "55M"
+        env:
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: mysql-config
+              key: database 
+        - name: MYSQL_USER
+          valueFrom:
+            configMapKeyRef:
+              name: mysql-config
+              key: username
+        - name: MYSQL_ROOT_PASSWORD_FILE
+          value: /etc/secrets/rootCredential
+        - name: MYSQL_PASSWORD_FILE
+          value: /etc/secrets/userCredential
+        ports: 
+        - containerPort: 3306
+          name: mysql
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: mysql-pvc
+        - mountPath: /etc/secrets
+          name: db-credential
+      volumes:
+      - name: mysql-pvc
+        persistentVolumeClaim:
+          claimName: mysql-pvc
+      - name: db-credential
+        secret: 
+          secretName: mysql-secret
+          defaultMode: 0440
+          items:
+          - key: rootPassword
+            path: rootCredential
+          - key: password
+            path: userCredential
+      restartPolicy: Always
+---
+
+- kind: Service
+  apiVersion: v1
+  metadata:
+    namespace: demo
+    name: mysql-svc
+  spec:
+    selector:
+      name: mysql
+    type: ClusterIP
+    ports:
+    - name: mysql
+      port: 3306
+      targetPort: 3306
